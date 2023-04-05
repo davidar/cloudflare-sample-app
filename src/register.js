@@ -1,5 +1,6 @@
 import { AWW_COMMAND, INVITE_COMMAND } from './commands.js';
 import fetch from 'node-fetch';
+import * as dotenv from 'dotenv';
 
 /**
  * This file is meant to be run from the command line, and is not used by the
@@ -8,6 +9,8 @@ import fetch from 'node-fetch';
  */
 
 /* eslint-disable no-undef */
+
+dotenv.config();
 
 const token = process.env.DISCORD_TOKEN;
 const applicationId = process.env.DISCORD_APPLICATION_ID;
