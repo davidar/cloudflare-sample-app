@@ -76,11 +76,35 @@ router.post('/', async (request, env) => {
       }
       case CHAT_COMMAND.name.toLowerCase(): {
         const messageText = message.data.options[0].value;
+        const interaction_id = message.id;
+        const interaction_token = message.token;
+
+        const url = `https://discord.com/api/v10/interactions/${interaction_id}/${interaction_token}/callback`;
+        const init = {
+          body: JSON.stringify({type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE}),
+          method: "POST",
+          headers: {
+            "content-type": "application/json;charset=UTF-8",
+          },
+        };
+        const response = await fetch(url, init);
+        console.log('response1', await response.text());
+        
         const content = await callChatGPT(messageText, env);
-        return new JsonResponse({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: { content },
-        });
+
+        const application_id = env.DISCORD_APPLICATION_ID;
+        const url2 = `https://discord.com/api/v10/webhooks/${application_id}/${interaction_token}/messages/@original`;
+        const init2 = {
+          body: JSON.stringify({ content }),
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json;charset=UTF-8",
+          },
+        };
+        const response2 = await fetch(url2, init2);
+        console.log('response2', await response2.text());
+
+        return new Response();
       }
       default:
         console.error('Unknown Command');
