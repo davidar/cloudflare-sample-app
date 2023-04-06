@@ -100,10 +100,11 @@ router.post('/', async (request, env) => {
         await callChatGPT(messageText, env, token => {
           content += token;
           if (content.trim() && '.!?'.includes(content.trim().slice(-1))) {
-            console.log(content);
             editInteraction(interaction, content);
           }
         });
+        const response = await editInteraction(interaction, content);
+        console.log(await response.text());
         return new Response();
       }
       default:
