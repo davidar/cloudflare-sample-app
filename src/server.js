@@ -90,19 +90,21 @@ router.post('/', async (request, env) => {
         const response = await fetch(url, init);
         console.log('response1', await response.text());
         
-        const content = await callChatGPT(messageText, env);
-
-        const application_id = env.DISCORD_APPLICATION_ID;
-        const url2 = `https://discord.com/api/v10/webhooks/${application_id}/${interaction_token}/messages/@original`;
-        const init2 = {
-          body: JSON.stringify({ content }),
-          method: "PATCH",
-          headers: {
-            "content-type": "application/json;charset=UTF-8",
-          },
-        };
-        const response2 = await fetch(url2, init2);
-        console.log('response2', await response2.text());
+        let content = '';
+        await callChatGPT(messageText, env, async chunk => {
+          content += chunk;
+          const application_id = env.DISCORD_APPLICATION_ID;
+          const url2 = `https://discord.com/api/v10/webhooks/${application_id}/${interaction_token}/messages/@original`;
+          const init2 = {
+            body: JSON.stringify({ content }),
+            method: "PATCH",
+            headers: {
+              "content-type": "application/json;charset=UTF-8",
+            },
+          };
+          const response2 = await fetch(url2, init2);
+          console.log('response2', await response2.text());
+        });
 
         return new Response();
       }

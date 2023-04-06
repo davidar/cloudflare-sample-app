@@ -20,6 +20,7 @@
   "license": "MIT",
   "dependencies": {
     "discord-interactions": "^3.0.0",
+    "eventsource-parser": "^1.0.0",
     "itty-router": "^2.5.1"
   },
   "devDependencies": {
