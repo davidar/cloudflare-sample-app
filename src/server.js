@@ -26,23 +26,30 @@ class JsonResponse extends Response {
 
 function deferInteraction(interaction) {
   return fetch(
-    `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`, {
-      body: JSON.stringify({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE }),
-      method: "POST",
+    `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`,
+    {
+      body: JSON.stringify({
+        type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+      }),
+      method: 'POST',
       headers: {
-        "content-type": "application/json;charset=UTF-8",
+        'content-type': 'application/json;charset=UTF-8',
       },
-    });
+    }
+  );
 }
 
 function editInteraction(interaction, content) {
-  return fetch(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, {
-    body: JSON.stringify({ content }),
-    method: "PATCH",
-    headers: {
-      "content-type": "application/json;charset=UTF-8",
-    },
-  });
+  return fetch(
+    `https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,
+    {
+      body: JSON.stringify({ content }),
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json;charset=UTF-8',
+      },
+    }
+  );
 }
 
 const router = Router();
@@ -97,7 +104,7 @@ router.post('/', async (request, env) => {
         const messageText = interaction.data.options[0].value;
         deferInteraction(interaction);
         let content = '';
-        await callChatGPT(messageText, env, token => {
+        await callChatGPT(messageText, env, (token) => {
           content += token;
           if (content.trim() && '.!?'.includes(content.trim().slice(-1))) {
             editInteraction(interaction, content);
@@ -149,4 +156,3 @@ export default {
     return router.handle(request, env);
   },
 };
-

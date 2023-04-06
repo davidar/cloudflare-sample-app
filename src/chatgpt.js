@@ -26,12 +26,12 @@ export async function callChatGPT(message, env, callback) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
-    body
+    body,
   });
 
-  const parser = createParser(event => {
+  const parser = createParser((event) => {
     if (event.type === 'event' && event.data !== '[DONE]') {
       const response = JSON.parse(event.data);
       const { choices } = response;
@@ -47,7 +47,7 @@ export async function callChatGPT(message, env, callback) {
   const reader = response.body?.getReader();
   const decoder = new TextDecoder('utf-8');
 
-  while (true) {
+  for (;;) {
     const res = await reader.read();
     if (res.done) break;
     parser.feed(decoder.decode(res.value, { stream: true }));
