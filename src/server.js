@@ -24,6 +24,27 @@ class JsonResponse extends Response {
   }
 }
 
+function deferInteraction(interaction) {
+  return fetch(
+    `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`, {
+      body: JSON.stringify({ type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE }),
+      method: "POST",
+      headers: {
+        "content-type": "application/json;charset=UTF-8",
+      },
+    });
+}
+
+function editInteraction(interaction, content) {
+  return fetch(`https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, {
+    body: JSON.stringify({ content }),
+    method: "PATCH",
+    headers: {
+      "content-type": "application/json;charset=UTF-8",
+    },
+  });
+}
+
 const router = Router();
 
 /**
@@ -39,9 +60,8 @@ router.get('/', (request, env) => {
  * https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object
  */
 router.post('/', async (request, env) => {
-  const message = await request.json();
-  console.log(message);
-  if (message.type === InteractionType.PING) {
+  const interaction = await request.json();
+  if (interaction.type === InteractionType.PING) {
     // The `PING` message is used during the initial webhook handshake, and is
     // required to configure the webhook in the developer portal.
     console.log('Handling Ping request');
@@ -50,9 +70,9 @@ router.post('/', async (request, env) => {
     });
   }
 
-  if (message.type === InteractionType.APPLICATION_COMMAND) {
+  if (interaction.type === InteractionType.APPLICATION_COMMAND) {
     // Most user commands will come as `APPLICATION_COMMAND`.
-    switch (message.data.name.toLowerCase()) {
+    switch (interaction.data.name.toLowerCase()) {
       case AWW_COMMAND.name.toLowerCase(): {
         console.log('handling cute request');
         const cuteUrl = await getCuteUrl();
@@ -64,8 +84,7 @@ router.post('/', async (request, env) => {
         });
       }
       case INVITE_COMMAND.name.toLowerCase(): {
-        const applicationId = env.DISCORD_APPLICATION_ID;
-        const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${applicationId}&scope=applications.commands`;
+        const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${interaction.application_id}&scope=applications.commands`;
         return new JsonResponse({
           type: 4,
           data: {
@@ -75,40 +94,16 @@ router.post('/', async (request, env) => {
         });
       }
       case CHAT_COMMAND.name.toLowerCase(): {
-        const messageText = message.data.options[0].value;
-        const interaction_id = message.id;
-        const interaction_token = message.token;
-
-        const url = `https://discord.com/api/v10/interactions/${interaction_id}/${interaction_token}/callback`;
-        const init = {
-          body: JSON.stringify({type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE}),
-          method: "POST",
-          headers: {
-            "content-type": "application/json;charset=UTF-8",
-          },
-        };
-        const response = await fetch(url, init);
-        console.log('response1', await response.text());
-
+        const messageText = interaction.data.options[0].value;
+        deferInteraction(interaction);
         let content = '';
-        await callChatGPT(messageText, env, async token => {
+        await callChatGPT(messageText, env, token => {
           content += token;
-          if (!content.trim()) return;
-          if ('.!?'.includes(content.trim().slice(-1))) {
-            const application_id = env.DISCORD_APPLICATION_ID;
-            const url2 = `https://discord.com/api/v10/webhooks/${application_id}/${interaction_token}/messages/@original`;
-            const init2 = {
-              body: JSON.stringify({ content }),
-              method: "PATCH",
-              headers: {
-                "content-type": "application/json;charset=UTF-8",
-              },
-            };
-            const response2 = await fetch(url2, init2);
-            console.log('response2', await response2.text());
+          if (content.trim() && '.!?'.includes(content.trim().slice(-1))) {
+            console.log(content);
+            editInteraction(interaction, content);
           }
         });
-
         return new Response();
       }
       default:
@@ -153,3 +148,4 @@ export default {
     return router.handle(request, env);
   },
 };
+
