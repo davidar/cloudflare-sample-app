@@ -8,8 +8,9 @@ import {
   InteractionType,
   verifyKey,
 } from 'discord-interactions';
-import { AWW_COMMAND, INVITE_COMMAND } from './commands.js';
+import { AWW_COMMAND, CHAT_COMMAND, INVITE_COMMAND } from './commands.js';
 import { getCuteUrl } from './reddit.js';
+import { callChatGPT } from './chatgpt.js';
 
 class JsonResponse extends Response {
   constructor(body, init) {
@@ -71,6 +72,14 @@ router.post('/', async (request, env) => {
             content: INVITE_URL,
             flags: 64,
           },
+        });
+      }
+      case CHAT_COMMAND.name.toLowerCase(): {
+        const messageText = message.data.options[0].value;
+        const content = await callChatGPT(messageText, env);
+        return new JsonResponse({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: { content },
         });
       }
       default:
