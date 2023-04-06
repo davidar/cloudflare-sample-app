@@ -8,7 +8,7 @@ export async function callChatGPT(message, env, callback) {
   const messages = [
     {
       role: 'system',
-      content: 'A helpful discord bot.' //gprompt,
+      content: gprompt,
     },
     {
       role: 'user',
