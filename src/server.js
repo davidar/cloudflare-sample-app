@@ -24,21 +24,6 @@ class JsonResponse extends Response {
   }
 }
 
-function deferInteraction(interaction) {
-  return fetch(
-    `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`,
-    {
-      body: JSON.stringify({
-        type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
-      }),
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json;charset=UTF-8',
-      },
-    }
-  );
-}
-
 function editInteraction(interaction, content) {
   return fetch(
     `https://discord.com/api/v10/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`,
@@ -66,7 +51,7 @@ router.get('/', (request, env) => {
  * include a JSON payload described here:
  * https://discord.com/developers/docs/interactions/receiving-and-responding#interaction-object
  */
-router.post('/', async (request, env) => {
+router.post('/', async (request, env, context) => {
   const interaction = await request.json();
   if (interaction.type === InteractionType.PING) {
     // The `PING` message is used during the initial webhook handshake, and is
@@ -101,18 +86,23 @@ router.post('/', async (request, env) => {
         });
       }
       case CHAT_COMMAND.name.toLowerCase(): {
-        const messageText = interaction.data.options[0].value;
-        deferInteraction(interaction);
-        let content = '';
-        await callChatGPT(messageText, env, (token) => {
-          content += token;
-          if (content.trim() && '.!?'.includes(content.trim().slice(-1))) {
-            editInteraction(interaction, content);
-          }
+        context.waitUntil(
+          (async () => {
+            const messageText = interaction.data.options[0].value;
+            let content = '';
+            await callChatGPT(messageText, env, (token) => {
+              content += token;
+              if (content.trim() && '.!?'.includes(content.trim().slice(-1))) {
+                editInteraction(interaction, content);
+              }
+            });
+            const response = await editInteraction(interaction, content);
+            console.log(await response.text());
+          })()
+        );
+        return new JsonResponse({
+          type: InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
         });
-        const response = await editInteraction(interaction, content);
-        console.log(await response.text());
-        return new Response();
       }
       default:
         console.error('Unknown Command');
@@ -133,7 +123,7 @@ export default {
    * @param {*} env A map of key/value pairs with env vars and secrets from the cloudflare env.
    * @returns
    */
-  async fetch(request, env) {
+  async fetch(request, env, context) {
     if (request.method === 'POST') {
       // Using the incoming headers, verify this request actually came from discord.
       const signature = request.headers.get('x-signature-ed25519');
@@ -153,6 +143,6 @@ export default {
     }
 
     // Dispatch the request to the appropriate route
-    return router.handle(request, env);
+    return router.handle(request, env, context);
   },
 };
